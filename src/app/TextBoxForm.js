@@ -28,10 +28,14 @@ const GiveText = () => {
 }
 
 const TextBoxForm = () => {
+  const [countDown, setCountDown] = useState('');
+  const [speed, setSpeed] = useState(0); // check why we are getting -ve speed after first word
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
   const [inputValue, setInputValue] = useState('');
   const [givenText, setGivenText] = useState('');
   const [words, setWords] = useState([])
-  const [accepted, setResult] = useState([]);
+  const [raceComplete, setRaceComplete] = useState('');
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
@@ -46,6 +50,8 @@ const TextBoxForm = () => {
     console.log(words[idx])
     console.log("current", event.target.value)
     console.log(event.target.value == words[idx])
+
+
     // if word matched clear 
     if (event.target.value==words[idx]){
       setInputValue("");
@@ -55,41 +61,70 @@ const TextBoxForm = () => {
       else{
         setIdx(idx+1)
       }
+      setEndTime(new Date())
+
+      console.log("end time", endTime)
+      console.log((60*(idx+1)*1000), endTime-startTime)
+      
+      var s = Math.abs((60*(idx+1)*1000)/(endTime-startTime))
+      setSpeed(s)
     }
     else{
       setInputValue(event.target.value);
     }
   };
 
+  const handleStartRace = (event) => {
+    event.preventDefault();
+    setIdx(0);
+    // countDown(); // shouldn't be able to click on input till this ends
+    setStartTime(new Date())
+    console.log("start time", startTime)
+    setSpeed(0);
+    setRaceComplete("")
+  }
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    console.log('Input value:', inputValue);
-    setResult("Accepted")
+    setRaceComplete("Race Completed!")
     setIdx(0)
   };
   // space bar should be trigger submit and check if the word is correct or not
   return (
     <div>
+      <button 
+        name="start race"
+        onClick={handleStartRace}>
+          Start Race
+      </button>  
+      <div className='filler-div'> </div> 
+      <div>
+        {countDown}
+      </div>
       {/*Given Text*/}
-        <div>
-          {givenText}
-        </div>
-        <form >
-        <label>
-            Enter Text:
-            <input
-            type="text"
-            id="textInput" 
-            name="textInput" 
-            value={inputValue}
-            onChange={handleInputChange}
-            />
-        </label>
-        </form>
-        <div>
-            {accepted}
-        </div>
+      <div className='given-text'>
+        {givenText}
+      </div>
+      <div className='filler-div'> </div> 
+      <form >
+      <label>
+          Type here:   
+          <input
+          type="text"
+          id="textInput" 
+          name="textInput" 
+          value={inputValue}
+          onChange={handleInputChange}
+          />
+      </label>
+      </form>
+      <div>
+        Speed: {speed.toFixed(2)} WPM
+      </div>
+      <div className='filler-div'> </div> 
+      <div>
+          {raceComplete}
+      </div>
     </div>
     
   );

@@ -1,4 +1,8 @@
-.input-large{
-  width: 600px;
-  height: 15px;
+.filler-div {
+  width: 100%; 
+  height: 20px; 
+}
+.given-text {
+  border: 1px solid #000; /* 1px solid black border */
+  padding: 10px; /* Optional: Add padding for space between text and border */
 }
