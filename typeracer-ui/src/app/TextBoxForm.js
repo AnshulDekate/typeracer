@@ -27,6 +27,7 @@ const GiveText = () => {
   )
 }
 
+
 const TextBoxForm = () => {
   const [countDown, setCountDown] = useState('');
   const [speed, setSpeed] = useState(0); // check why we are getting -ve speed after first word
@@ -37,12 +38,32 @@ const TextBoxForm = () => {
   const [words, setWords] = useState([])
   const [raceComplete, setRaceComplete] = useState('');
   const [idx, setIdx] = useState(0);
+  const [races, setRaces] = useState(0);
 
   useEffect(() => {
     var s = GiveText()
     setGivenText(GiveText())
     setWords(strToWords(s))
   }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:8081/races');
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.text();
+        console.log("data ", data)
+        setRaces(data)
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, [raceComplete]);
 
 
   const handleInputChange = (event) => {
@@ -87,9 +108,20 @@ const TextBoxForm = () => {
   const handleSubmit = (event) => {
     event.preventDefault();
     setRaceComplete("Race Completed!")
+
+    try {
+      const response = fetch('http://localhost:8081/raceCompleted');
+      console.log(response)
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+
     setIdx(0)
   };
   // space bar should be trigger submit and check if the word is correct or not
+
+
+  
   return (
     <div>
       <button 
@@ -97,6 +129,13 @@ const TextBoxForm = () => {
         onClick={handleStartRace}>
           Start Race
       </button>  
+      <div className='filler-div'> </div> 
+      <div>
+        User: anshul
+      </div>
+      <div>
+        {races} races
+      </div>
       <div className='filler-div'> </div> 
       <div>
         {countDown}
