@@ -1,6 +1,7 @@
 // TextBoxForm.js
 'use client'
 import React, { useState, useEffect } from 'react';
+import {getRaces, postRaceCompleted} from './Backend';
 
 const strToWords = (s) => {
   var words = []
@@ -30,13 +31,14 @@ const GiveText = () => {
 
 const TextBoxForm = () => {
   const [countDown, setCountDown] = useState('');
+  const [inputBoxDisabled, setInputBoxDisabled] = useState(true);
   const [speed, setSpeed] = useState(0); // check why we are getting -ve speed after first word
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
   const [inputValue, setInputValue] = useState('');
   const [givenText, setGivenText] = useState('');
   const [words, setWords] = useState([])
-  const [raceComplete, setRaceComplete] = useState('');
+  const [raceCompleted, setRaceCompleted] = useState('');
   const [idx, setIdx] = useState(0);
   const [races, setRaces] = useState(0);
 
@@ -44,27 +46,23 @@ const TextBoxForm = () => {
     var s = GiveText()
     setGivenText(GiveText())
     setWords(strToWords(s))
+    getRaces(setRaces)
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('http://localhost:8081/races');
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.text();
-        console.log("data ", data)
-        setRaces(data)
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-
-    fetchData();
-  }, [raceComplete]);
-
+    getRaces(setRaces)
+  }, [raceCompleted]);
+  
+  const handleStartRace = (event) => {
+    event.preventDefault();
+    // countDown(); // shouldn't be able to click on input till this ends
+    setInputBoxDisabled(false);
+    setIdx(0);
+    setStartTime(new Date())
+    console.log("start time", startTime)
+    setSpeed(0);
+    setRaceCompleted("")
+  }
 
   const handleInputChange = (event) => {
     console.log(idx)
@@ -76,51 +74,32 @@ const TextBoxForm = () => {
     // if word matched clear 
     if (event.target.value==words[idx]){
       setInputValue("");
+
+      setEndTime(new Date())
+      console.log("end time", endTime)
+      console.log((60*(idx+1)*1000), endTime-startTime)
+      var s = Math.abs((60*(idx+1)*1000)/(endTime-startTime))
+      setSpeed(s)
+
       if (idx==words.length-1){
-        handleSubmit(event)
+        handleRaceCompleted(event)
       }
       else{
         setIdx(idx+1)
       }
-      setEndTime(new Date())
-
-      console.log("end time", endTime)
-      console.log((60*(idx+1)*1000), endTime-startTime)
-      
-      var s = Math.abs((60*(idx+1)*1000)/(endTime-startTime))
-      setSpeed(s)
     }
     else{
       setInputValue(event.target.value);
     }
   };
 
-  const handleStartRace = (event) => {
+  const handleRaceCompleted = (event) => {
     event.preventDefault();
-    setIdx(0);
-    // countDown(); // shouldn't be able to click on input till this ends
-    setStartTime(new Date())
-    console.log("start time", startTime)
-    setSpeed(0);
-    setRaceComplete("")
-  }
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setRaceComplete("Race Completed!")
-
-    try {
-      const response = fetch('http://localhost:8081/raceCompleted');
-      console.log(response)
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-
+    postRaceCompleted(setRaceCompleted);
+    setInputBoxDisabled(true);
     setIdx(0)
   };
   // space bar should be trigger submit and check if the word is correct or not
-
-
   
   return (
     <div>
@@ -154,6 +133,7 @@ const TextBoxForm = () => {
           name="textInput" 
           value={inputValue}
           onChange={handleInputChange}
+          disabled={inputBoxDisabled}
           />
       </label>
       </form>
@@ -162,7 +142,7 @@ const TextBoxForm = () => {
       </div>
       <div className='filler-div'> </div> 
       <div>
-          {raceComplete}
+          {raceCompleted}
       </div>
     </div>
     

@@ -23,7 +23,7 @@ func raceCnt(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	races := getRaceCompleted("anshul")
-	fmt.Fprintf(w, string(races))
+	fmt.Fprintf(w, "%d", races)
 }
 
 func main() {
