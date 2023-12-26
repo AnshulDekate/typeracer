@@ -6,12 +6,85 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/gorilla/websocket"
 )
 
-// create a user and save the number of races he completed.
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// Allow all connections for simplicity; you may want to implement origin checking in production.
+		return true
+	},
+}
 
+var connections = make(map[*websocket.Conn]struct{})
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("called websocket endpoint")
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Println("Error upgrading to websocket:", err)
+		return
+	}
+	defer conn.Close()
+
+	fmt.Println("Client connected")
+	// Add the new connection to the list
+	connections[conn] = struct{}{}
+
+	// Handle WebSocket events
+	for {
+		_, p, err := conn.ReadMessage()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if string(p) == "join" {
+			fmt.Println("in")
+			fmt.Printf(`{"event": "players", "data": %d}`, getPlayers())
+			message := []byte(fmt.Sprintf(`{"event": "players", "data": %d}`, getPlayers()))
+			broadcastMessage(websocket.TextMessage, message)
+		}
+
+		// if err := conn.WriteMessage(messageType, p); err != nil {
+		// 	fmt.Println(err)
+		// 	return
+		// }
+	}
+}
+
+func broadcastMessage(messageType int, message []byte) {
+	// Iterate over all connections and send the message
+	fmt.Println("Broadcasting ", len(connections))
+	for conn := range connections {
+		err := conn.WriteMessage(messageType, message)
+		if err != nil {
+			fmt.Println("Error writing message:", err)
+			// Optionally handle errors or remove the connection from the list
+		}
+	}
+}
+
+func handleJoinLobby(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	data := updatePlayers()
+	fmt.Fprintf(w, "%d", data)
+}
+
+func handleGetPlayers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	n := getPlayers()
+	fmt.Fprintf(w, "%d", n)
+}
+
+// create a user and save the number of races he completed.
 func raceCompletedhandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	updateRaceCompleted("anshul")
@@ -19,11 +92,18 @@ func raceCompletedhandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func raceCnt(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	races := getRaceCompleted("anshul")
 	fmt.Fprintf(w, "%d", races)
+}
+
+func handleFrontPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	fmt.Fprintf(w, "Welcome to typing race backend")
 }
 
 func main() {
@@ -35,8 +115,12 @@ func main() {
 	fmt.Println("Hello World")
 	http.HandleFunc("/raceCompleted", raceCompletedhandler)
 	http.HandleFunc("/races", raceCnt)
+	http.HandleFunc("/joinLobby", handleJoinLobby)
+	http.HandleFunc("/players", handleGetPlayers)
+	// http.HandleFunc("/", handleFrontPage)
 
-	http.ListenAndServe(":8081", nil)
+	http.HandleFunc("/ws", handleWebSocket)
+	http.ListenAndServe("10.107.107.107:8081", nil)
 
 	// Setup signal handling to catch SIGTERM
 	stopChan := make(chan os.Signal, 1)

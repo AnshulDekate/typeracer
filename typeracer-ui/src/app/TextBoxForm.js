@@ -1,7 +1,8 @@
 // TextBoxForm.js
 'use client'
 import React, { useState, useEffect } from 'react';
-import {getRaces, postRaceCompleted} from './Backend';
+import {getRaces, postRaceCompleted} from './BackendREST';
+import {Lobby} from './BackendWebSocket';
 
 const strToWords = (s) => {
   var words = []
@@ -119,6 +120,9 @@ const TextBoxForm = () => {
       <div>
         {countDown}
       </div>
+      <div className='filler-div'> </div> 
+      <Lobby/>
+      <div className='filler-div'> </div> 
       {/*Given Text*/}
       <div className='given-text'>
         {givenText}
@@ -134,6 +138,7 @@ const TextBoxForm = () => {
           value={inputValue}
           onChange={handleInputChange}
           disabled={inputBoxDisabled}
+          autoCapitalize="none"
           />
       </label>
       </form>

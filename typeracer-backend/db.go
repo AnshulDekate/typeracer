@@ -128,3 +128,48 @@ func getRaceCompleted(user string) int {
 		return existingUserProfile.RaceCompleted
 	}
 }
+
+type Players struct {
+	N int `bson:"N"`
+}
+
+func updatePlayers() int { // create and update the number of players in lobby
+	db := client.Database("test")
+	lobbyCollection := db.Collection("lobby")
+
+	players := Players{
+		N: 0,
+	}
+
+	keyToFind := "N"
+	filter := bson.M{keyToFind: bson.M{"$exists": true}}
+
+	err := lobbyCollection.FindOne(context.Background(), filter).Decode(&players)
+
+	if err == mongo.ErrNoDocuments {
+		lobbyCollection.InsertOne(context.Background(), players)
+	} else if err != nil {
+		fmt.Println(err)
+		return 69
+	}
+
+	update := bson.D{
+		{"$set", bson.D{
+			{"N", players.N + 1},
+		}},
+	}
+
+	lobbyCollection.UpdateOne(context.Background(), filter, update)
+	fmt.Println(players.N)
+	return players.N
+}
+
+func getPlayers() int {
+	db := client.Database("test")
+	lobbyCollection := db.Collection("lobby")
+	keyToFind := "N"
+	filter := bson.M{keyToFind: bson.M{"$exists": true}}
+	var players Players
+	lobbyCollection.FindOne(context.Background(), filter).Decode(&players)
+	return players.N
+}
