@@ -129,47 +129,30 @@ func getRaceCompleted(user string) int {
 	}
 }
 
+var players Players
+
 type Players struct {
-	N int `bson:"N"`
+	N        int         `json:"N"`
+	Progress map[int]int `json:"progress"`
 }
 
-func updatePlayers() int { // create and update the number of players in lobby
-	db := client.Database("test")
-	lobbyCollection := db.Collection("lobby")
+type Event struct {
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
+}
 
-	players := Players{
-		N: 0,
-	}
+type Progress struct {
+	PlayerID int `json:"playerid"`
+	Idx      int `json:"idx"`
+}
 
-	keyToFind := "N"
-	filter := bson.M{keyToFind: bson.M{"$exists": true}}
-
-	err := lobbyCollection.FindOne(context.Background(), filter).Decode(&players)
-
-	if err == mongo.ErrNoDocuments {
-		lobbyCollection.InsertOne(context.Background(), players)
-	} else if err != nil {
-		fmt.Println(err)
-		return 69
-	}
-
-	update := bson.D{
-		{"$set", bson.D{
-			{"N", players.N + 1},
-		}},
-	}
-
-	lobbyCollection.UpdateOne(context.Background(), filter, update)
-	fmt.Println(players.N)
-	return players.N
+func updatePlayers() int {
+	players.N = players.N + 1
+	playerID := players.N
+	players.Progress[playerID] = 0
+	return playerID
 }
 
 func getPlayers() int {
-	db := client.Database("test")
-	lobbyCollection := db.Collection("lobby")
-	keyToFind := "N"
-	filter := bson.M{keyToFind: bson.M{"$exists": true}}
-	var players Players
-	lobbyCollection.FindOne(context.Background(), filter).Decode(&players)
 	return players.N
 }

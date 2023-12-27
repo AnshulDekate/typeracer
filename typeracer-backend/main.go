@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -40,10 +41,35 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var progress Progress
+		err = json.Unmarshal(p, &progress)
+		if err == nil {
+			fmt.Println(progress)
+			players.Progress[progress.PlayerID] = progress.Idx
+			EventStruct := Event{
+				Event: "players",
+				Data:  players,
+			}
+			message, _ := json.Marshal(EventStruct)
+			broadcastMessage(websocket.TextMessage, message)
+		}
+
 		if string(p) == "join" {
-			fmt.Println("in")
-			fmt.Printf(`{"event": "players", "data": %d}`, getPlayers())
-			message := []byte(fmt.Sprintf(`{"event": "players", "data": %d}`, getPlayers()))
+			fmt.Println("new player joined")
+			playerID := updatePlayers()
+
+			EventStruct := Event{
+				Event: "joined",
+				Data:  playerID,
+			}
+			message, _ := json.Marshal(EventStruct)
+			conn.WriteMessage(websocket.TextMessage, message)
+
+			EventStruct = Event{
+				Event: "players",
+				Data:  players,
+			}
+			message, _ = json.Marshal(EventStruct)
 			broadcastMessage(websocket.TextMessage, message)
 		}
 
@@ -107,6 +133,10 @@ func handleFrontPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	players = Players{
+		N:        0,
+		Progress: make(map[int]int),
+	}
 	createMongoClient()
 	// createUser("anshul")
 	// insertUserProfile("anshul")

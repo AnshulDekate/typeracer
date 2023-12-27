@@ -87,6 +87,7 @@ const TextBoxForm = () => {
       }
       else{
         setIdx(idx+1)
+        
       }
     }
     else{
@@ -104,11 +105,6 @@ const TextBoxForm = () => {
   
   return (
     <div>
-      <button 
-        name="start race"
-        onClick={handleStartRace}>
-          Start Race
-      </button>  
       <div className='filler-div'> </div> 
       <div>
         User: anshul
@@ -121,7 +117,12 @@ const TextBoxForm = () => {
         {countDown}
       </div>
       <div className='filler-div'> </div> 
-      <Lobby/>
+      <Lobby idx={idx}/>
+      <button 
+        name="start race"
+        onClick={handleStartRace}>
+          Start Race
+      </button>  
       <div className='filler-div'> </div> 
       {/*Given Text*/}
       <div className='given-text'>
