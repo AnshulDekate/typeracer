@@ -6,3 +6,54 @@
   border: 1px solid #000; /* 1px solid black border */
   padding: 10px; /* Optional: Add padding for space between text and border */
 }
+
+.flex-container{
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  padding:20px
+}
+
+.flex-container-begin{
+  display:flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.practice{
+  margin-right:10px;
+}
+
+.join-lobby{
+  margin-left:10px;
+}
+
+.main-container{
+  position: relative;
+  margin-top: 50px;
+  margin-left: 50px;
+  margin-right: 50px;
+}
+
+.line-div{
+  border-bottom: 1px solid #000; 
+  width: 100%; 
+}
+
+.race-box{
+  display: flex;
+  height: 20px; 
+  margin-bottom: 20px;
+  border-bottom: 1px solid #000;
+  justify-content: space-between;
+  position: relative;
+}
+
+.actual-run{
+  flex: 1;
+  position: relative;
+}
+
+.invisible{
+  visibility: hidden;
+}

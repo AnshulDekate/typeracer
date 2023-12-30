@@ -1,5 +1,4 @@
 import React, {useState, useEffect} from "react";
-import { FONT_MANIFEST } from "../../node_modules/next/dist/shared/lib/constants";
 
 
 // global lobby for now
@@ -9,13 +8,14 @@ import { FONT_MANIFEST } from "../../node_modules/next/dist/shared/lib/constants
 // after completing you use mutex and obtain the rank
 // last player to complete finishes the race
 
-export const Lobby = ({idx}) => {
+export const Lobby = ({idx, words, joinLobby}) => {
     const [socket, setSocket] = useState(null);
     const [playerID, setPlayerID] = useState()
     const [players, setPlayers] = useState(0)
     // const [nxtRank, setnxtRank] = useState(1)
     // const [rank, setRank] = useState([])
     const [progress, setProgress] = useState([])
+    const [rank, setRank] = useState([])
 
     useEffect(()=>{
         const newSocket = new WebSocket('ws://10.107.107.107:8081/ws')
@@ -27,8 +27,8 @@ export const Lobby = ({idx}) => {
                     console.log(resp.data.N)
                     console.log(resp.data.progress)
                     setPlayers(resp.data.N);
-                    
                     setProgress(resp.data.progress);
+                    setRank(resp.data.rank);
                 } else if (resp.event == "joined") {
                     console.log("Joined the lobby with player id: ", resp.data);
                     setPlayerID(resp.data);
@@ -44,7 +44,7 @@ export const Lobby = ({idx}) => {
             setSocket(newSocket)
             console.log('WebSocket connection established.', newSocket.readyState, WebSocket.OPEN);
         });
-      
+        
         newSocket.addEventListener('error', (error) => {
             console.error('WebSocket error:', error);
         });
@@ -66,41 +66,38 @@ export const Lobby = ({idx}) => {
         console.log("useeffect sending progress")
         const data = {
             "playerid": playerID,
-            "idx": idx,
+            "percentage": (idx*100)/words.length,
         };
           
         if (socket && socket.readyState == WebSocket.OPEN) {
+            console.log("IN")
             console.log("sending progress", socket.readyState)
             console.log(JSON.stringify(data))
             socket.send(JSON.stringify(data));
         }
     }, [idx])
 
-    const handleJoinLobby = (event) => {
-        event.preventDefault();
+    useEffect(() => {
+        console.log("i am in")
         const message = 'join';
-        console.log("join lobby is socket ready ", socket.readyState)
-        socket.send(message);
-    }
+        if (socket && socket.readyState === WebSocket.OPEN) {
+         socket.send(message);
+        }
+    }, [joinLobby])
 
     return (
         <div>
-            <button
-            onClick={handleJoinLobby}
-            >
-                Join Lobby 
-            </button>
             <div className='filler-div'> </div>     
             {/* Currently {players} players in lobby */}
             <div>
-                Your player id is {playerID}
+                Your player ID is {playerID}
             </div>
             <div>
-                Players:
+                Stats:
                 <ul>
                     {/* Render the players as an array of React elements */}
                     {Object.keys(progress).map((key) => (
-                    <li key={key}>{`${key}: ${progress[key]}`}</li>
+                    <li key={key}>{`Player ${key}: Rank ${rank[key]!== undefined ? rank[key] : ''}`}</li>
                     ))}
                 </ul>
             </div>

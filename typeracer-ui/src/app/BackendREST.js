@@ -1,4 +1,5 @@
 export const getRaces = async (setRaces) => {
+    console.log("calling get races from ui")
     try {
         const response = await fetch('http://10.107.107.107:8081/races');
         var data = await response.text();

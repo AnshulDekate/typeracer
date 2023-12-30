@@ -31,7 +31,9 @@ const GiveText = () => {
 
 
 const TextBoxForm = () => {
+  console.log("Component rendered");
   const [countDown, setCountDown] = useState('');
+  const [joinLobby, setJoinLobby] = useState(0);
   const [inputBoxDisabled, setInputBoxDisabled] = useState(true);
   const [speed, setSpeed] = useState(0); // check why we are getting -ve speed after first word
   const [startTime, setStartTime] = useState(new Date());
@@ -44,6 +46,7 @@ const TextBoxForm = () => {
   const [races, setRaces] = useState(0);
 
   useEffect(() => {
+    console.log("after mount")
     var s = GiveText()
     setGivenText(GiveText())
     setWords(strToWords(s))
@@ -57,8 +60,9 @@ const TextBoxForm = () => {
   const handleStartRace = (event) => {
     event.preventDefault();
     // countDown(); // shouldn't be able to click on input till this ends
+    setJoinLobby(0)
     setInputBoxDisabled(false);
-    setIdx(0);
+    setIdx(0); 
     setStartTime(new Date())
     console.log("start time", startTime)
     setSpeed(0);
@@ -85,10 +89,7 @@ const TextBoxForm = () => {
       if (idx==words.length-1){
         handleRaceCompleted(event)
       }
-      else{
-        setIdx(idx+1)
-        
-      }
+      setIdx(idx+1)
     }
     else{
       setInputValue(event.target.value);
@@ -99,57 +100,81 @@ const TextBoxForm = () => {
     event.preventDefault();
     postRaceCompleted(setRaceCompleted);
     setInputBoxDisabled(true);
-    setIdx(0)
+    // setIdx(0)
   };
   // space bar should be trigger submit and check if the word is correct or not
   
+  const handleJoinLobby = (event) =>{
+    setJoinLobby(joinLobby+1)
+    setInputBoxDisabled(false)
+  }
+
   return (
     <div>
-      <div className='filler-div'> </div> 
-      <div>
-        User: anshul
+      <div className='flex-container'>
+        <div>Typing Showdown</div>
+        <div>User: anshul
+          {/* <div> {races} races </div> */}
+        </div>
       </div>
-      <div>
-        {races} races
-      </div>
+      <div className="line-div"></div>
+      
       <div className='filler-div'> </div> 
-      <div>
-        {countDown}
-      </div>
       <div className='filler-div'> </div> 
-      <Lobby idx={idx}/>
-      <button 
-        name="start race"
-        onClick={handleStartRace}>
-          Start Race
-      </button>  
-      <div className='filler-div'> </div> 
-      {/*Given Text*/}
-      <div className='given-text'>
-        {givenText}
+
+      <div className='main-container'>
+        <div className='flex-container-begin'>
+          <button name="practice" onClick={handleStartRace} className='practice'>
+              Practice
+          </button>  
+          <div> or </div>
+          <button name="join lobby" onClick={handleJoinLobby} className='join-lobby'>
+              Join Lobby 
+          </button>
+        </div>
+
+        <div className='filler-div'> </div> 
+        <div>
+          <Lobby idx={idx} words={words} joinLobby={joinLobby}/>
+        </div>
+        <div className='filler-div'> </div> 
+        
+        <div className='race-box'>
+          <div className='actual-run'>
+            <div className="car" style={{ position: 'relative', left: `${(idx*100)/words.length}%` }}>o^^^o</div>
+            </div>
+          <div className='invisible'>o^^^o</div>
+        </div>
+
+        {/*Given Text*/}
+        <div className='given-text'>
+          {givenText}
+        </div>
+        <div className='filler-div'> </div> 
+        <form >
+        <label>
+            Type here :   
+            <input
+            type="text"
+            id="textInput" 
+            name="textInput" 
+            value={inputValue}
+            onChange={handleInputChange}
+            disabled={inputBoxDisabled}
+            autoCapitalize="none"
+            style={{ marginLeft: '5px' }}
+            />
+        </label>
+        </form>
+        <div>
+          Speed: {speed.toFixed(2)} WPM
+        </div>
+        <div className='filler-div'> </div> 
+        <div>
+            {raceCompleted}
+        </div>
       </div>
-      <div className='filler-div'> </div> 
-      <form >
-      <label>
-          Type here:   
-          <input
-          type="text"
-          id="textInput" 
-          name="textInput" 
-          value={inputValue}
-          onChange={handleInputChange}
-          disabled={inputBoxDisabled}
-          autoCapitalize="none"
-          />
-      </label>
-      </form>
-      <div>
-        Speed: {speed.toFixed(2)} WPM
-      </div>
-      <div className='filler-div'> </div> 
-      <div>
-          {raceCompleted}
-      </div>
+
     </div>
     
   );

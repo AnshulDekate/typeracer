@@ -1,14 +1,10 @@
-import styles from './page.module.css'
 import TextBoxForm from './TextBoxForm';
 
 export default function Home() {
-
+  console.log("Home component rendered");
   return (
     <main >
-      <div >
-        <TextBoxForm />
-      </div>
-
+      <TextBoxForm />
     </main>
   )
 }

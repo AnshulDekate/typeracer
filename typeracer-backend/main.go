@@ -40,20 +40,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 			return
 		}
+		fmt.Println("got websocket message")
 
-		var progress Progress
-		err = json.Unmarshal(p, &progress)
-		if err == nil {
-			fmt.Println(progress)
-			players.Progress[progress.PlayerID] = progress.Idx
-			EventStruct := Event{
-				Event: "players",
-				Data:  players,
-			}
-			message, _ := json.Marshal(EventStruct)
-			broadcastMessage(websocket.TextMessage, message)
-		}
-
+		// var initiate InitiateLobby
+		// err = json.Unmarshal(p, &initiate)
+		// fmt.Println("here", initiate)
+		// if err == nil {
+		// 	fmt.Println("initiating lobby")
+		// 	players.Words = initiate.Words
+		// } else {
+		// 	fmt.Println(err)
+		// }
 		if string(p) == "join" {
 			fmt.Println("new player joined")
 			playerID := updatePlayers()
@@ -71,6 +68,27 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 			message, _ = json.Marshal(EventStruct)
 			broadcastMessage(websocket.TextMessage, message)
+		} else {
+			var progress Progress
+			err = json.Unmarshal(p, &progress)
+			if err == nil {
+				fmt.Println("event progress", progress)
+				players.Progress[progress.PlayerID] = progress.Percentage
+
+				if progress.Percentage == 100 {
+					players.Rank[progress.PlayerID] = players.NxtRank
+					players.NxtRank = players.NxtRank + 1
+				}
+
+				EventStruct := Event{
+					Event: "players",
+					Data:  players,
+				}
+				message, _ := json.Marshal(EventStruct)
+				broadcastMessage(websocket.TextMessage, message)
+			} else {
+				fmt.Println(err)
+			}
 		}
 
 		// if err := conn.WriteMessage(messageType, p); err != nil {
@@ -118,6 +136,7 @@ func raceCompletedhandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func raceCnt(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("calling get races")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -136,6 +155,9 @@ func main() {
 	players = Players{
 		N:        0,
 		Progress: make(map[int]int),
+		Rank:     make(map[int]int),
+		Words:    6,
+		NxtRank:  1,
 	}
 	createMongoClient()
 	// createUser("anshul")

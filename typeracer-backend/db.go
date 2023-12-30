@@ -134,6 +134,9 @@ var players Players
 type Players struct {
 	N        int         `json:"N"`
 	Progress map[int]int `json:"progress"`
+	Rank     map[int]int `json:"rank"`
+	NxtRank  int         `json:"nxtrank"`
+	Words    int         `json:"words"`
 }
 
 type Event struct {
@@ -142,9 +145,13 @@ type Event struct {
 }
 
 type Progress struct {
-	PlayerID int `json:"playerid"`
-	Idx      int `json:"idx"`
+	PlayerID   int `json:"playerid"`
+	Percentage int `json:"percentage"`
 }
+
+// type InitiateLobby struct {
+// 	Words int `json:"words"`
+// }
 
 func updatePlayers() int {
 	players.N = players.N + 1
