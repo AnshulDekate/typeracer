@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -18,7 +20,35 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var connections = make(map[int][]*websocket.Conn)
+type ConnList struct {
+	mu  sync.Mutex
+	all []*websocket.Conn
+}
+
+var connections = make(map[int]*ConnList)
+
+func countDown(sessionID int) {
+	total := 10 // 10 seconds countdown
+	for i := 0; i <= total; i++ {
+		players := sessions[sessionID]
+		players.Timer = i
+		if i == 5 {
+			players.Open = 0
+		}
+		sessions[sessionID] = players
+
+		// send players event
+		EventStruct := Event{
+			Event: "players",
+			Data:  players,
+		}
+		message, _ := json.Marshal(EventStruct)
+		connections[players.SessionID].mu.Lock()
+		broadcastMessage(websocket.TextMessage, message, connections[players.SessionID].all)
+		connections[players.SessionID].mu.Unlock()
+		time.Sleep(1 * time.Second)
+	}
+}
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Create new websocket connection
@@ -55,15 +85,28 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					Progress:  make(map[int]int),
 					Rank:      make(map[int]int),
 					NxtRank:   1,
+					Open:      1,
 				}
 				players.Progress[1] = 0
+				sessionID := currSessionID
+				if _, ok := connections[sessionID]; !ok {
+					connections[sessionID] = &ConnList{}
+				}
+				if connections[sessionID].all == nil {
+					connections[sessionID].all = make([]*websocket.Conn, 0)
+				}
 				sessions[currSessionID] = players
 			} else {
 				fmt.Println("joining existing lobby")
 				// only 5 people at max in lobby, before last 5 second in timer close the lobby
-				if players.N == 1 || (players.N < 5 && players.Timer < 5) {
+				if players.Open == 1 {
 					players.N = players.N + 1
 					players.Progress[players.N] = 0
+					if players.N == 2 {
+						go countDown(players.SessionID)
+					} else if players.N == 5 {
+						players.Open = 0
+					}
 					sessions[currSessionID] = players
 					fmt.Println(players)
 				} else {
@@ -75,8 +118,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 						Progress:  make(map[int]int),
 						Rank:      make(map[int]int),
 						NxtRank:   1,
+						Open:      1,
 					}
 					players.Progress[1] = 0
+					sessionID := currSessionID
+					if _, ok := connections[sessionID]; !ok {
+						connections[sessionID] = &ConnList{}
+					}
+					if connections[sessionID].all == nil {
+						connections[sessionID].all = make([]*websocket.Conn, 0)
+					}
 					sessions[currSessionID] = players
 				}
 			}
@@ -94,9 +145,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			message, _ := json.Marshal(EventStruct)
 			conn.WriteMessage(websocket.TextMessage, message)
 
-			sessionConnections := connections[players.SessionID]
-			sessionConnections = append(sessionConnections, conn)
-			connections[players.SessionID] = sessionConnections
+			fmt.Println("adding new connection to list")
+			connections[players.SessionID].mu.Lock()
+			connections[players.SessionID].all = append(connections[players.SessionID].all, conn)
+			connections[players.SessionID].mu.Unlock()
 
 			// send players event, update the shared data of the session (currently broadcasting to all sessions)
 			fmt.Println("sending players event")
@@ -105,7 +157,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				Data:  players,
 			}
 			message, _ = json.Marshal(EventStruct)
-			broadcastMessage(websocket.TextMessage, message, connections[players.SessionID])
+
+			connections[players.SessionID].mu.Lock()
+			broadcastMessage(websocket.TextMessage, message, connections[players.SessionID].all)
+			connections[players.SessionID].mu.Unlock()
 
 		} else {
 			var progress Progress
@@ -130,7 +185,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					Data:  players,
 				}
 				message, _ := json.Marshal(EventStruct)
-				broadcastMessage(websocket.TextMessage, message, connections[players.SessionID])
+				connections[players.SessionID].mu.Lock()
+				broadcastMessage(websocket.TextMessage, message, connections[players.SessionID].all)
+				connections[players.SessionID].mu.Unlock()
 			} else {
 				fmt.Println(err)
 			}

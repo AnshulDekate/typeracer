@@ -5,12 +5,13 @@ var currSessionID int = 1
 var sessions map[int]Players
 
 type Players struct {
-	SessionID int         `json:"sessionID"`
 	N         int         `json:"N"`
+	SessionID int         `json:"sessionID"`
 	Progress  map[int]int `json:"progress"`
 	Rank      map[int]int `json:"rank"`
 	NxtRank   int         `json:"nxtrank"`
 	Timer     int         `json:"timer"`
+	Open      int         `json:"open"`
 }
 
 type Event struct {

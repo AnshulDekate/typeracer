@@ -31,6 +31,7 @@ const GiveText = () => {
 
 
 const TextBoxForm = () => {
+  // don't allow copy paste
   console.log("Component rendered");
   const [countDown, setCountDown] = useState('');
   const [practice, setPractice] = useState(1);
@@ -59,9 +60,7 @@ const TextBoxForm = () => {
   }, [raceCompleted]);
 
   const start = () => {
-    setInputBoxDisabled(false);
     setIdx(0); setSpeed(0);
-    setStartTime(new Date())
     console.log("start time", startTime)
     setRaceCompleted("")
   }
@@ -71,7 +70,8 @@ const TextBoxForm = () => {
     // countDown(); // shouldn't be able to click on input till this ends
     setPractice(1);
     start()
-    setJoinLobby(1)
+    setStartTime(new Date()) // change it to first input
+    setInputBoxDisabled(false);
   }
 
   const handleInputChange = (event) => {
@@ -135,14 +135,14 @@ const TextBoxForm = () => {
               Practice
           </button>  
           <div> or </div>
-          <button name="join lobby" onClick={handleJoinLobby} className='join-lobby'>
+          <button name="join lobby" onClick={handleJoinLobby} className='join-lobby' disabled={joinLobby>0}>
               Join Lobby 
           </button>
         </div>
 
         <div className='filler-div'> </div> 
         <div>
-          <Lobby idx={idx} words={words} joinLobby={joinLobby} practice={practice}/>
+          <Lobby idx={idx} words={words} joinLobby={joinLobby} practice={practice} setInputBoxDisabled={setInputBoxDisabled} setStartTime={setStartTime}/>
         </div>
         <div className='filler-div'> </div> 
         
