@@ -128,38 +128,3 @@ func getRaceCompleted(user string) int {
 		return existingUserProfile.RaceCompleted
 	}
 }
-
-var players Players
-
-type Players struct {
-	N        int         `json:"N"`
-	Progress map[int]int `json:"progress"`
-	Rank     map[int]int `json:"rank"`
-	NxtRank  int         `json:"nxtrank"`
-	Words    int         `json:"words"`
-}
-
-type Event struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-}
-
-type Progress struct {
-	PlayerID   int `json:"playerid"`
-	Percentage int `json:"percentage"`
-}
-
-// type InitiateLobby struct {
-// 	Words int `json:"words"`
-// }
-
-func updatePlayers() int {
-	players.N = players.N + 1
-	playerID := players.N
-	players.Progress[playerID] = 0
-	return playerID
-}
-
-func getPlayers() int {
-	return players.N
-}

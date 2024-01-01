@@ -33,6 +33,7 @@ const GiveText = () => {
 const TextBoxForm = () => {
   console.log("Component rendered");
   const [countDown, setCountDown] = useState('');
+  const [practice, setPractice] = useState(1);
   const [joinLobby, setJoinLobby] = useState(0);
   const [inputBoxDisabled, setInputBoxDisabled] = useState(true);
   const [speed, setSpeed] = useState(0); // check why we are getting -ve speed after first word
@@ -56,17 +57,21 @@ const TextBoxForm = () => {
   useEffect(() => {
     getRaces(setRaces)
   }, [raceCompleted]);
-  
-  const handleStartRace = (event) => {
-    event.preventDefault();
-    // countDown(); // shouldn't be able to click on input till this ends
-    setJoinLobby(0)
+
+  const start = () => {
     setInputBoxDisabled(false);
-    setIdx(0); 
+    setIdx(0); setSpeed(0);
     setStartTime(new Date())
     console.log("start time", startTime)
-    setSpeed(0);
     setRaceCompleted("")
+  }
+
+  const handlePractice = (event) => {
+    event.preventDefault();
+    // countDown(); // shouldn't be able to click on input till this ends
+    setPractice(1);
+    start()
+    setJoinLobby(1)
   }
 
   const handleInputChange = (event) => {
@@ -105,8 +110,10 @@ const TextBoxForm = () => {
   // space bar should be trigger submit and check if the word is correct or not
   
   const handleJoinLobby = (event) =>{
+    event.preventDefault();
+    setPractice(0)
     setJoinLobby(joinLobby+1)
-    setInputBoxDisabled(false)
+    start()
   }
 
   return (
@@ -124,7 +131,7 @@ const TextBoxForm = () => {
 
       <div className='main-container'>
         <div className='flex-container-begin'>
-          <button name="practice" onClick={handleStartRace} className='practice'>
+          <button name="practice" onClick={handlePractice} className='practice'>
               Practice
           </button>  
           <div> or </div>
@@ -135,7 +142,7 @@ const TextBoxForm = () => {
 
         <div className='filler-div'> </div> 
         <div>
-          <Lobby idx={idx} words={words} joinLobby={joinLobby}/>
+          <Lobby idx={idx} words={words} joinLobby={joinLobby} practice={practice}/>
         </div>
         <div className='filler-div'> </div> 
         

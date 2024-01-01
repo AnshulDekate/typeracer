@@ -18,10 +18,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var connections = make(map[*websocket.Conn]struct{})
+var connections = make(map[int][]*websocket.Conn)
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("called websocket endpoint")
+	// Create new websocket connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Error upgrading to websocket:", err)
@@ -30,9 +30,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	fmt.Println("Client connected")
-	// Add the new connection to the list
-	connections[conn] = struct{}{}
-
 	// Handle WebSocket events
 	for {
 		_, p, err := conn.ReadMessage()
@@ -42,37 +39,83 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Println("got websocket message")
 
-		// var initiate InitiateLobby
-		// err = json.Unmarshal(p, &initiate)
-		// fmt.Println("here", initiate)
-		// if err == nil {
-		// 	fmt.Println("initiating lobby")
-		// 	players.Words = initiate.Words
-		// } else {
-		// 	fmt.Println(err)
-		// }
 		if string(p) == "join" {
-			fmt.Println("new player joined")
-			playerID := updatePlayers()
+			// Player wants to join available session
 
+			// with current session id, get players data
+			players := sessions[currSessionID]
+
+			fmt.Println("new player joined")
+			// if this is the first player initialize the struct
+			if players.SessionID == 0 {
+				fmt.Println("creating new lobby")
+				players = Players{
+					SessionID: currSessionID,
+					N:         1,
+					Progress:  make(map[int]int),
+					Rank:      make(map[int]int),
+					NxtRank:   1,
+				}
+				players.Progress[1] = 0
+				sessions[currSessionID] = players
+			} else {
+				fmt.Println("joining existing lobby")
+				// only 5 people at max in lobby, before last 5 second in timer close the lobby
+				if players.N == 1 || (players.N < 5 && players.Timer < 5) {
+					players.N = players.N + 1
+					players.Progress[players.N] = 0
+					sessions[currSessionID] = players
+					fmt.Println(players)
+				} else {
+					fmt.Println("everything full, creating new lobby")
+					currSessionID++
+					players = Players{
+						SessionID: currSessionID,
+						N:         1,
+						Progress:  make(map[int]int),
+						Rank:      make(map[int]int),
+						NxtRank:   1,
+					}
+					players.Progress[1] = 0
+					sessions[currSessionID] = players
+				}
+			}
+
+			// send joined event containing playerid and session id
+			fmt.Println("sending joined event")
+			joined := Joined{
+				PlayerID:  players.N,
+				SessionID: players.SessionID,
+			}
 			EventStruct := Event{
 				Event: "joined",
-				Data:  playerID,
+				Data:  joined,
 			}
 			message, _ := json.Marshal(EventStruct)
 			conn.WriteMessage(websocket.TextMessage, message)
 
+			sessionConnections := connections[players.SessionID]
+			sessionConnections = append(sessionConnections, conn)
+			connections[players.SessionID] = sessionConnections
+
+			// send players event, update the shared data of the session (currently broadcasting to all sessions)
+			fmt.Println("sending players event")
 			EventStruct = Event{
 				Event: "players",
 				Data:  players,
 			}
 			message, _ = json.Marshal(EventStruct)
-			broadcastMessage(websocket.TextMessage, message)
+			broadcastMessage(websocket.TextMessage, message, connections[players.SessionID])
+
 		} else {
 			var progress Progress
 			err = json.Unmarshal(p, &progress)
 			if err == nil {
 				fmt.Println("event progress", progress)
+
+				// with current session id, get players data
+				players := sessions[progress.SessionID]
+
 				players.Progress[progress.PlayerID] = progress.Percentage
 
 				if progress.Percentage == 100 {
@@ -80,50 +123,31 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					players.NxtRank = players.NxtRank + 1
 				}
 
+				sessions[progress.SessionID] = players
+
 				EventStruct := Event{
 					Event: "players",
 					Data:  players,
 				}
 				message, _ := json.Marshal(EventStruct)
-				broadcastMessage(websocket.TextMessage, message)
+				broadcastMessage(websocket.TextMessage, message, connections[players.SessionID])
 			} else {
 				fmt.Println(err)
 			}
 		}
-
-		// if err := conn.WriteMessage(messageType, p); err != nil {
-		// 	fmt.Println(err)
-		// 	return
-		// }
 	}
 }
 
-func broadcastMessage(messageType int, message []byte) {
+func broadcastMessage(messageType int, message []byte, sessionConnections []*websocket.Conn) {
 	// Iterate over all connections and send the message
 	fmt.Println("Broadcasting ", len(connections))
-	for conn := range connections {
+	for _, conn := range sessionConnections {
 		err := conn.WriteMessage(messageType, message)
 		if err != nil {
 			fmt.Println("Error writing message:", err)
 			// Optionally handle errors or remove the connection from the list
 		}
 	}
-}
-
-func handleJoinLobby(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	data := updatePlayers()
-	fmt.Fprintf(w, "%d", data)
-}
-
-func handleGetPlayers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	n := getPlayers()
-	fmt.Fprintf(w, "%d", n)
 }
 
 // create a user and save the number of races he completed.
@@ -152,26 +176,18 @@ func handleFrontPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	players = Players{
-		N:        0,
-		Progress: make(map[int]int),
-		Rank:     make(map[int]int),
-		Words:    6,
-		NxtRank:  1,
-	}
 	createMongoClient()
+	sessions = make(map[int]Players)
 	// createUser("anshul")
 	// insertUserProfile("anshul")
 	// updateRaceCompleted("anshul")
 
-	fmt.Println("Hello World")
+	// Routes
 	http.HandleFunc("/raceCompleted", raceCompletedhandler)
 	http.HandleFunc("/races", raceCnt)
-	http.HandleFunc("/joinLobby", handleJoinLobby)
-	http.HandleFunc("/players", handleGetPlayers)
 	// http.HandleFunc("/", handleFrontPage)
-
 	http.HandleFunc("/ws", handleWebSocket)
+
 	http.ListenAndServe("10.107.107.107:8081", nil)
 
 	// Setup signal handling to catch SIGTERM
