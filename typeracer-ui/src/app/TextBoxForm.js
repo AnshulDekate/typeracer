@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {getRaces, postRaceCompleted} from './BackendREST';
 import {Lobby} from './BackendWebSocket';
+import {RaceBox} from './RaceBox';
 
 const strToWords = (s) => {
   var words = []
@@ -52,11 +53,11 @@ const TextBoxForm = () => {
     var s = GiveText()
     setGivenText(GiveText())
     setWords(strToWords(s))
-    getRaces(setRaces)
+    // getRaces(setRaces)
   }, []);
 
   useEffect(() => {
-    getRaces(setRaces)
+    // getRaces(setRaces)
   }, [raceCompleted]);
 
   const start = () => {
@@ -93,6 +94,7 @@ const TextBoxForm = () => {
 
       if (idx==words.length-1){
         handleRaceCompleted(event)
+
       }
       setIdx(idx+1)
     }
@@ -103,9 +105,9 @@ const TextBoxForm = () => {
 
   const handleRaceCompleted = (event) => {
     event.preventDefault();
-    postRaceCompleted(setRaceCompleted);
+    // postRaceCompleted(setRaceCompleted);
     setInputBoxDisabled(true);
-    // setIdx(0)
+    setJoinLobby(0);
   };
   // space bar should be trigger submit and check if the word is correct or not
   
@@ -120,7 +122,7 @@ const TextBoxForm = () => {
     <div>
       <div className='flex-container'>
         <div>Typing Showdown</div>
-        <div>User: anshul
+        <div>User: Guest
           {/* <div> {races} races </div> */}
         </div>
       </div>
@@ -131,11 +133,11 @@ const TextBoxForm = () => {
 
       <div className='main-container'>
         <div className='flex-container-begin'>
-          <button name="practice" onClick={handlePractice} className='practice'>
+          <button name="practice" onClick={handlePractice} className='practice' disabled={joinLobby}>
               Practice
           </button>  
           <div> or </div>
-          <button name="join lobby" onClick={handleJoinLobby} className='join-lobby' disabled={joinLobby>0}>
+          <button name="join lobby" onClick={handleJoinLobby} className='join-lobby' disabled={joinLobby}>
               Join Lobby 
           </button>
         </div>
@@ -146,12 +148,7 @@ const TextBoxForm = () => {
         </div>
         <div className='filler-div'> </div> 
         
-        <div className='race-box'>
-          <div className='actual-run'>
-            <div className="car" style={{ position: 'relative', left: `${(idx*100)/words.length}%` }}>o^^^o</div>
-            </div>
-          <div className='invisible'>o^^^o</div>
-        </div>
+        {practice ? (<RaceBox pos={(idx*100)/words.length}/>): null}
 
         {/*Given Text*/}
         <div className='given-text'>

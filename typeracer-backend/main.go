@@ -166,10 +166,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			var progress Progress
 			err = json.Unmarshal(p, &progress)
 			if err == nil {
-				fmt.Println("event progress", progress)
-
 				// with current session id, get players data
 				players := sessions[progress.SessionID]
+
+				fmt.Println("event progress", progress, players)
 
 				players.Progress[progress.PlayerID] = progress.Percentage
 
@@ -233,15 +233,15 @@ func handleFrontPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	createMongoClient()
+	// createMongoClient()
 	sessions = make(map[int]Players)
 	// createUser("anshul")
 	// insertUserProfile("anshul")
 	// updateRaceCompleted("anshul")
 
 	// Routes
-	http.HandleFunc("/raceCompleted", raceCompletedhandler)
-	http.HandleFunc("/races", raceCnt)
+	// http.HandleFunc("/raceCompleted", raceCompletedhandler)
+	// http.HandleFunc("/races", raceCnt)
 	// http.HandleFunc("/", handleFrontPage)
 	http.HandleFunc("/ws", handleWebSocket)
 

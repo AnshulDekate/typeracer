@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from "react";
+import { RaceBox } from "./RaceBox";
 
 export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, setStartTime}) => {
     const [socket, setSocket] = useState(null);
@@ -65,7 +66,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
             "percentage": parseInt((idx*100)/words.length),
         };
           
-        if (socket && socket.readyState == WebSocket.OPEN) {
+        if (sessionID>0 && socket && socket.readyState == WebSocket.OPEN) {
             console.log("sending progress", socket.readyState)
             console.log(JSON.stringify(data))
             socket.send(JSON.stringify(data));
@@ -74,7 +75,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
 
     useEffect(() => {
         const message = 'join';
-        if (socket && socket.readyState === WebSocket.OPEN) {
+        if (joinLobby==1 && socket && socket.readyState === WebSocket.OPEN) {
          socket.send(message);
         }
     }, [joinLobby])
@@ -96,19 +97,25 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
                     <div className='filler-div'> </div>     
                     {/* Currently {players} players in lobby */}
                     <div>
-                        <div>
+                        {/* <div>
                             Stats: Your player ID is {playerID} and session ID is {sessionID}
                         </div>
                         <ul>
-                            {/* Render the players as an array of React elements */}
                             {Object.keys(progress).map((key) => (
                                 <li key={key}>{`Player ${key}: progress ${progress[key]!== undefined ? progress[key] : ''}%, rank ${rank[key]!== undefined ? rank[key] : '-'}`}</li>
                                 ))}
-                        </ul>
+                        </ul> */}
+                        
+                        <RaceBox pos={progress[playerID]} /> 
+
+                        {Object.keys(progress).map((key) => (
+                            key==playerID? null : (<div key={key} className='dimmer'>
+                                 <RaceBox pos={progress[key]} /> 
+                            </div>)
+                        ))}   
+                            
                     </div>
-                    <div>
-                    <div className='filler-div'> </div>     
-                    </div>
+                    <div className='filler-div'> </div>         
                 </div>
             )}
         </div>

@@ -57,3 +57,7 @@
 .invisible{
   visibility: hidden;
 }
+
+.dimmer {
+  color: rgb(163, 163, 163);
+}
