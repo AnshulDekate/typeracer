@@ -24,7 +24,7 @@ const strToWords = (s) => {
 }
 
 const GiveText = () => {
-  var s = "Type this text correctly you monkey"
+  var s = "Feel the thunder of engines and the anticipation at the starting line. Paint a vivid picture of the moments before a race begins."
   return (
     s
   )
@@ -42,7 +42,7 @@ const TextBoxForm = () => {
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
   const [inputValue, setInputValue] = useState('');
-  const [givenText, setGivenText] = useState('');
+  const [givenText, setGivenText] = useState(GiveText()); // ux is faster
   const [words, setWords] = useState([])
   const [raceCompleted, setRaceCompleted] = useState('');
   const [idx, setIdx] = useState(0);
@@ -50,10 +50,7 @@ const TextBoxForm = () => {
 
   useEffect(() => {
     console.log("after mount")
-    var s = GiveText()
-    setGivenText(GiveText())
-    setWords(strToWords(s))
-    // getRaces(setRaces)
+    setWords(strToWords(givenText))
   }, []);
 
   useEffect(() => {
