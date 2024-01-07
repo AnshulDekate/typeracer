@@ -6,7 +6,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
     const [playerID, setPlayerID] = useState()
     const [sessionID, setSessionID] = useState()
     const [players, setPlayers] = useState(0)
-    const [timer, setTimer] = useState(10)
+    const [timer, setTimer] = useState(20)
     const [progress, setProgress] = useState([])
     const [rank, setRank] = useState([])
     
