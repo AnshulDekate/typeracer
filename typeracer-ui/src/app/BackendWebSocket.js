@@ -20,7 +20,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
                     console.log(resp.data.N)
                     console.log(resp.data.progress)
                     setPlayers(resp.data.N);
-                    setTimer(10-resp.data.timer)
+                    setTimer(20-resp.data.timer)
                     setProgress(resp.data.progress);
                     setRank(resp.data.rank);
 
@@ -74,6 +74,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
     }, [idx])
 
     useEffect(() => {
+        console.log("sending join")
         const message = 'join';
         if (joinLobby==1 && socket && socket.readyState === WebSocket.OPEN) {
          socket.send(message);
@@ -92,7 +93,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
             {practice ? null:(
                 <div>
                     <div> 
-                    {progress[playerID ]== 100? `You got rank ${rank[playerID]}`: (timer == 0 ? "Start!": `Timer: ${timer}`) }
+                    {(progress!=null && progress[playerID]== 100)? `You got rank ${rank[playerID]}`: (timer == 0 ? "Start!": `Timer: ${timer}`) }
                     </div>
                     <div className='filler-div'> </div>     
                     {/* Currently {players} players in lobby */}
@@ -113,7 +114,9 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
                                  <RaceBox pos={progress[key]} /> 
                             </div>)
                         ))}   
-                        {players==1? "waiting for other players to join ..." : null}
+                        <div> {players<=3? "waiting for other players to join ... \n" : null} </div>
+                        <div> {timer<=12? "adding two bots ..." : null} </div>
+                        
                     </div>
                     <div className='filler-div'> </div>         
                 </div>

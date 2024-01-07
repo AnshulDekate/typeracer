@@ -1,17 +1,29 @@
 package main
 
-var currSessionID int = 1
+import (
+	"sync"
 
-var sessions map[int]Players
+	"github.com/gorilla/websocket"
+)
 
-type Players struct {
-	N         int         `json:"N"`
-	SessionID int         `json:"sessionID"`
-	Progress  map[int]int `json:"progress"`
-	Rank      map[int]int `json:"rank"`
-	NxtRank   int         `json:"nxtrank"`
-	Timer     int         `json:"timer"`
-	Open      int         `json:"open"`
+var availSession AvailSession // available session to join
+var sessions map[int]*Lobby   // session id -> games
+
+type AvailSession struct {
+	mu sync.Mutex
+	ID int
+}
+
+type Lobby struct {
+	mu          sync.Mutex
+	N           int               `json:"N"`
+	SessionID   int               `json:"sessionID"`
+	Connections []*websocket.Conn `json:"connections"` // session id -> websocket connections
+	Progress    map[int]int       `json:"progress"`    // player id -> progress
+	Rank        map[int]int       `json:"rank"`        // player id -> rank
+	NxtRank     int               `json:"nxtrank"`
+	Timer       int               `json:"timer"`
+	Open        int               `json:"open"`
 }
 
 type Event struct {
@@ -19,24 +31,13 @@ type Event struct {
 	Data  interface{} `json:"data"`
 }
 
-type Progress struct {
-	SessionID  int `json:"sessionID"`
-	PlayerID   int `json:"playerID"`
-	Percentage int `json:"percentage"`
-}
-
 type Joined struct {
 	PlayerID  int `json:"playerID"`
 	SessionID int `json:"sessionID"`
 }
 
-// func updatePlayers(players Players) int {
-// 	players.N = players.N + 1
-// 	playerID := players.N
-// 	players.Progress[playerID] = 0
-// 	return playerID
-// }
-
-// func getPlayers(players Players) int {
-// 	return players.N
-// }
+type Progress struct {
+	PlayerID   int `json:"playerID"`
+	SessionID  int `json:"sessionID"`
+	Percentage int `json:"percentage"`
+}

@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -20,34 +20,110 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type ConnList struct {
-	mu  sync.Mutex
-	all []*websocket.Conn
-}
-
-var connections = make(map[int]*ConnList)
-
 func countDown(sessionID int) {
-	total := 10 // 10 seconds countdown
+	lobby := sessions[sessionID]
+	total := 20 // 20 seconds countdown
 	for i := 0; i <= total; i++ {
-		players := sessions[sessionID]
-		players.Timer = i
+		lobby.mu.Lock()
+		lobby.Timer = i
 		if i == 5 {
-			players.Open = 0
+			lobby.Open = 0
 		}
-		sessions[sessionID] = players
+		sessions[sessionID] = lobby
 
 		// send players event
 		EventStruct := Event{
 			Event: "players",
-			Data:  players,
+			Data:  lobby,
 		}
 		message, _ := json.Marshal(EventStruct)
-		connections[players.SessionID].mu.Lock()
-		broadcastMessage(websocket.TextMessage, message, connections[players.SessionID].all)
-		connections[players.SessionID].mu.Unlock()
+		broadcastMessage(websocket.TextMessage, message, lobby.Connections)
+		lobby.mu.Unlock()
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func launchBot(sessionID int, seed int) {
+	time.Sleep(10 * time.Second)
+	lobby := sessions[sessionID]
+	lobby.mu.Lock()
+	lobby.N = lobby.N + 1
+	lobby.Progress[lobby.N] = 0
+	playerID := lobby.N
+	sendPlayersMessage(lobby)
+	lobby.mu.Unlock()
+
+	idx := 0
+
+	for {
+
+		lobby.mu.Lock()
+		if lobby.Timer >= 20 {
+			idx++
+			percentage := (idx * 100) / 23
+			lobby.Progress[playerID] = percentage
+			if percentage == 100 {
+				lobby.Rank[playerID] = lobby.NxtRank
+				lobby.NxtRank = lobby.NxtRank + 1
+				sendPlayersMessage(lobby)
+				lobby.mu.Unlock()
+				break
+			}
+			sendPlayersMessage(lobby)
+		}
+		lobby.mu.Unlock()
+
+		rand.Seed(int64(seed) + time.Now().UnixNano())
+		speed := rand.Intn(seed) + 30
+		time.Sleep(time.Minute / time.Duration(speed))
+	}
+
+}
+
+func CreateNewLobby() {
+	fmt.Println("creating new lobby")
+	availSession.ID++
+
+	lobby := Lobby{
+		SessionID:   availSession.ID,
+		N:           1,
+		Progress:    make(map[int]int),
+		Rank:        make(map[int]int),
+		Connections: make([]*websocket.Conn, 0),
+		NxtRank:     1,
+		Open:        1,
+	}
+	lobby.Progress[1] = 0
+
+	sessions[availSession.ID] = &lobby
+
+}
+
+func sendJoinedMessage(conn *websocket.Conn, lobby *Lobby) {
+	// send joined event containing playerid and session id
+	fmt.Println("sending joined event")
+	joined := Joined{
+		PlayerID:  lobby.N,
+		SessionID: lobby.SessionID,
+	}
+	EventStruct := Event{
+		Event: "joined",
+		Data:  joined,
+	}
+	message, _ := json.Marshal(EventStruct)
+	conn.WriteMessage(websocket.TextMessage, message)
+}
+
+func sendPlayersMessage(lobby *Lobby) {
+	// send players event, update the shared data of the session
+	fmt.Println("sending players event")
+	EventStruct := Event{
+		Event: "players",
+		Data:  lobby,
+	}
+	message, _ := json.Marshal(EventStruct)
+
+	broadcastMessage(websocket.TextMessage, message, lobby.Connections)
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +134,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
-
 	fmt.Println("Client connected")
+
 	// Handle WebSocket events
 	for {
 		_, p, err := conn.ReadMessage()
@@ -67,127 +143,83 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println("got websocket message")
+		fmt.Println("got websocket message", string(p))
 
 		if string(p) == "join" {
-			// Player wants to join available session
+			fmt.Println("joining")
+			// join should be synchronized across websockets
+			// create new session or join existing
 
-			// with current session id, get players data
-			players := sessions[currSessionID]
+			availSession.mu.Lock()
 
-			fmt.Println("new player joined")
-			// if this is the first player initialize the struct
-			if players.SessionID == 0 {
-				fmt.Println("creating new lobby")
-				players = Players{
-					SessionID: currSessionID,
-					N:         1,
-					Progress:  make(map[int]int),
-					Rank:      make(map[int]int),
-					NxtRank:   1,
-					Open:      1,
-				}
-				players.Progress[1] = 0
-				sessionID := currSessionID
-				if _, ok := connections[sessionID]; !ok {
-					connections[sessionID] = &ConnList{}
-				}
-				if connections[sessionID].all == nil {
-					connections[sessionID].all = make([]*websocket.Conn, 0)
-				}
-				sessions[currSessionID] = players
-			} else {
+			lobby := sessions[availSession.ID] //reference
+
+			lobby.mu.Lock()
+
+			joined := 0
+			if lobby.Open == 1 {
+				joined = 1
 				fmt.Println("joining existing lobby")
 				// only 5 people at max in lobby, before last 5 second in timer close the lobby
-				if players.Open == 1 {
-					players.N = players.N + 1
-					players.Progress[players.N] = 0
-					if players.N == 2 {
-						go countDown(players.SessionID)
-					} else if players.N == 5 {
-						players.Open = 0
-					}
-					sessions[currSessionID] = players
-					fmt.Println(players)
-				} else {
-					fmt.Println("everything full, creating new lobby")
-					currSessionID++
-					players = Players{
-						SessionID: currSessionID,
-						N:         1,
-						Progress:  make(map[int]int),
-						Rank:      make(map[int]int),
-						NxtRank:   1,
-						Open:      1,
-					}
-					players.Progress[1] = 0
-					sessionID := currSessionID
-					if _, ok := connections[sessionID]; !ok {
-						connections[sessionID] = &ConnList{}
-					}
-					if connections[sessionID].all == nil {
-						connections[sessionID].all = make([]*websocket.Conn, 0)
-					}
-					sessions[currSessionID] = players
+				lobby.N = lobby.N + 1
+				lobby.Progress[lobby.N] = 0
+
+				if lobby.N >= 7 {
+					lobby.Open = 0
 				}
+				sessions[availSession.ID] = lobby
+
+				fmt.Println("adding new connection to list")
+				lobby.Connections = append(lobby.Connections, conn)
+
+				sendJoinedMessage(conn, lobby)
+				sendPlayersMessage(lobby)
 			}
 
-			// send joined event containing playerid and session id
-			fmt.Println("sending joined event")
-			joined := Joined{
-				PlayerID:  players.N,
-				SessionID: players.SessionID,
+			lobby.mu.Unlock()
+
+			if joined == 0 {
+				fmt.Println("everything full, creating new lobby")
+				CreateNewLobby()
+				newlobby := sessions[availSession.ID]
+				fmt.Println("adding new connection to list")
+				newlobby.Connections = append(newlobby.Connections, conn)
+				newlobby.mu.Lock()
+				sendJoinedMessage(conn, newlobby)
+				sendPlayersMessage(lobby)
+				newlobby.mu.Unlock()
+				go countDown(availSession.ID)
+				go launchBot(availSession.ID, 5)
+				go launchBot(availSession.ID, 20)
 			}
-			EventStruct := Event{
-				Event: "joined",
-				Data:  joined,
-			}
-			message, _ := json.Marshal(EventStruct)
-			conn.WriteMessage(websocket.TextMessage, message)
 
-			fmt.Println("adding new connection to list")
-			connections[players.SessionID].mu.Lock()
-			connections[players.SessionID].all = append(connections[players.SessionID].all, conn)
-			connections[players.SessionID].mu.Unlock()
-
-			// send players event, update the shared data of the session (currently broadcasting to all sessions)
-			fmt.Println("sending players event")
-			EventStruct = Event{
-				Event: "players",
-				Data:  players,
-			}
-			message, _ = json.Marshal(EventStruct)
-
-			connections[players.SessionID].mu.Lock()
-			broadcastMessage(websocket.TextMessage, message, connections[players.SessionID].all)
-			connections[players.SessionID].mu.Unlock()
-
+			availSession.mu.Unlock()
 		} else {
+			fmt.Println("progressing")
 			var progress Progress
 			err = json.Unmarshal(p, &progress)
 			if err == nil {
-				// with current session id, get players data
-				players := sessions[progress.SessionID]
+				fmt.Println("event progress", progress)
 
-				fmt.Println("event progress", progress, players)
+				lobby := sessions[progress.SessionID]
+				lobby.mu.Lock()
 
-				players.Progress[progress.PlayerID] = progress.Percentage
+				lobby.Progress[progress.PlayerID] = progress.Percentage
 
 				if progress.Percentage == 100 {
-					players.Rank[progress.PlayerID] = players.NxtRank
-					players.NxtRank = players.NxtRank + 1
+					lobby.Rank[progress.PlayerID] = lobby.NxtRank
+					lobby.NxtRank = lobby.NxtRank + 1
 				}
 
-				sessions[progress.SessionID] = players
+				sessions[progress.SessionID] = lobby
 
 				EventStruct := Event{
 					Event: "players",
-					Data:  players,
+					Data:  lobby,
 				}
 				message, _ := json.Marshal(EventStruct)
-				connections[players.SessionID].mu.Lock()
-				broadcastMessage(websocket.TextMessage, message, connections[players.SessionID].all)
-				connections[players.SessionID].mu.Unlock()
+				broadcastMessage(websocket.TextMessage, message, lobby.Connections)
+				lobby.mu.Unlock()
 			} else {
 				fmt.Println(err)
 			}
@@ -197,7 +229,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func broadcastMessage(messageType int, message []byte, sessionConnections []*websocket.Conn) {
 	// Iterate over all connections and send the message
-	fmt.Println("Broadcasting ", len(connections))
+	fmt.Println("Broadcasting ", len(sessionConnections))
 	for _, conn := range sessionConnections {
 		err := conn.WriteMessage(messageType, message)
 		if err != nil {
@@ -234,7 +266,11 @@ func handleFrontPage(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// createMongoClient()
-	sessions = make(map[int]Players)
+	// init global variables
+	availSession = AvailSession{ID: 0}
+	sessions = make(map[int]*Lobby)
+	sessions[availSession.ID] = &Lobby{Open: 0}
+
 	// createUser("anshul")
 	// insertUserProfile("anshul")
 	// updateRaceCompleted("anshul")
