@@ -113,7 +113,7 @@ export const Lobby = ({idx, words, joinLobby, practice, setInputBoxDisabled, set
                                  <RaceBox pos={progress[key]} /> 
                             </div>)
                         ))}   
-                            
+                        {players==1? "waiting for other players to join ..." : null}
                     </div>
                     <div className='filler-div'> </div>         
                 </div>

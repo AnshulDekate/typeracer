@@ -1,4 +1,3 @@
-// TextBoxForm.js
 'use client'
 import React, { useState, useEffect } from 'react';
 import {getRaces, postRaceCompleted} from './BackendREST';
@@ -31,7 +30,7 @@ const GiveText = () => {
 }
 
 
-const TextBoxForm = () => {
+const MainBox = () => {
   // don't allow copy paste
   console.log("Component rendered");
   const [countDown, setCountDown] = useState('');
@@ -115,6 +114,13 @@ const TextBoxForm = () => {
     start()
   }
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Add your custom logic here
+    }
+  };
+
   return (
     <div>
       <div className='flex-container'>
@@ -163,6 +169,7 @@ const TextBoxForm = () => {
             onChange={handleInputChange}
             disabled={inputBoxDisabled}
             autoCapitalize="none"
+            onKeyDown={handleKeyDown}
             style={{ marginLeft: '5px' }}
             />
         </label>
@@ -181,4 +188,4 @@ const TextBoxForm = () => {
   );
 };
 
-export default TextBoxForm;
+export default MainBox;
